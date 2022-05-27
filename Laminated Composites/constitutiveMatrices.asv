@@ -1,0 +1,87 @@
+function [AMat,BMat,DMat,SMat] = constitutiveMatrices(thickness,ks,pi,phi,Q,orientationMat,laminateLayers,materialProperties)
+    h=thickness;
+    t=h/laminateLayers;
+
+    if materialProperties==0
+        EY=1;EX=40*EY;GYZ=0.5*EY;GXZ=0.6*EY;GXY=GXZ;
+        nyuXY=0.25;nyuYX=nyuXY*EY/EX;factor=1-nyuXY*nyuYX;
+    else
+        EX=materialProperties(1);EY=materialProperties(2);GXY=materialProperties(3);GYZ=materialProperties(4);GXZ=materialProperties(5);
+        nyuXY=materialProperties(6);nyuYX=materialProperties(7);factor=1-nyuXY*nyuYX;
+    end
+    
+    % orienation of laminates
+
+     if orientationMat==0
+        orientationMat=[0,pi/2,0];
+     end
+
+    % Coordinates in thickness direction
+    %for zz=1:laminateLayers;
+        %z(1)=-(h/2);z(2)=-(h/2)+h/3;z(3)=-z(2);z(4)=-z(1);
+
+    if rem(laminateLayers,2)==0
+        for zz=1:laminateLayers+1
+            z(zz)=(-laminateLayers*t/2)+(zz-1)*t;
+        end
+    elseif rem(laminateLayers,2)~=0
+        for zz=1:laminateLayers+1
+            z(zz)=(-laminateLayers*t/2)+(zz-1)*t;
+        end
+    end
+
+    % [Q] in 0º orientation 
+    qb(1,1,1)=EX/factor;
+    qb(1,2,1)=nyuYX*EX/factor;
+    qb(2,1,1)=nyuXY*EY/factor;
+    qb(2,2,1)=EY/factor;
+    qb(3,3,1)=GXY;
+    qb(4,4,1)=ks*GYZ;
+    qb(5,5,1)=ks*GXZ;
+    
+    % transformation matrix
+    T=[cos(phi)^2,sin(phi)^2,-sin(2*phi),0,0;...
+       sin(phi)^2,cos(phi)^2,sin(2*phi),0,0;...
+       sin(phi)*cos(phi),-sin(phi)*cos(phi),cos(phi)^2-sin(phi)^2,0,0;...
+       0,0,0,cos(phi),sin(phi);...
+       0,0,0,-sin(phi),cos(phi)];
+    
+    % [Q] in structural axes
+    qB=T*qb*T.';
+    %% 
+    
+    for s=1:size(orientationMat,2)
+        for i=1:5
+            for j=1:5
+               Q(i,j,s)=subs(qB(i,j,1),phi,orientationMat(s));
+           end
+       end
+       Q=double(Q);
+    end
+    
+    %______________________________________________
+    Astiff(5,5)=0;Bstiff(5,5)=0;Dstiff(5,5)=0;Sstiff(5,5)=0;
+    for k=1:size(orientationMat,2)
+            for i=1:3
+            for j=1:3
+            Astiff(i,j)=Astiff(i,j)+Q(i,j,k)*(z(k+1)-z(k));
+            Bstiff(i,j)=Bstiff(i,j)+Q(i,j,k)*(z(k+1)^2-z(k)^2)/2;
+            Dstiff(i,j)=Dstiff(i,j)+Q(i,j,k)*(z(k+1)^3-z(k)^3)/3;
+            end
+            end
+    
+                for i=4:5
+                for j=4:5
+                Sstiff(i,j)=Sstiff(i,j)+Q(i,j,k)*(z(k+1)-z(k));
+                end
+                end
+    end
+    pi=double(pi); % come back to numeric computation
+    
+    % constitutive matrices
+    AMat=Astiff(1:3,1:3);
+    BMat=Bstiff(1:3,1:3);
+    DMat=Dstiff(1:3,1:3);
+    SMat=Sstiff(4:5,4:5);
+
+end

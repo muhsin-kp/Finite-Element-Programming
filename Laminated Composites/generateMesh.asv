@@ -1,0 +1,31 @@
+function [totalElements,totalNodes,nodalCoordinateMat,elementConnectivityMat] = generateMesh(LengthL,LengthW,...
+                                         ElementsX,ElementsY)
+              totalElements=ElementsX*ElementsY;
+              xx = 0:LengthL/ElementsX:LengthL;
+              yy = 0:LengthW/ElementsY:LengthW;
+              [XX, YY] = meshgrid(xx,yy);
+              nodalCoordinateMat = [XX(:),YY(:)];
+              elementConnectivityMat = zeros(ElementsX*ElementsY,4);
+              %cycle 
+              j = 1;
+              i =1;
+              node1 =0;
+              counter = 0;
+              for j = 1:ElementsY
+                  for i =1: ElementsX
+                      counter = counter +1;
+                      if i ==1 && j==1
+                          node1 =1;
+                      else
+                          node1 = node1 +1;
+                      end     
+                      
+                      node2 = node1 + 1;
+                      node4 = node1 + ElementsX + 1;
+                      node3 = node2 + ElementsX + 1;
+                      elementConnectivityMat(counter,:) = [node1 node2 node3 node4];
+                  end
+                   node1 = node1+1;node2 = node2+1;
+              end  
+              totalNodes=size(nodalCoordinateMat,1);
+ end
